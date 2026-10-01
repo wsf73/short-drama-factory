@@ -1,0 +1,24 @@
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 临时与本地
+*.tmp
+*.log
+.env
+.env.*
+
+# 本地安装/缓存产物（如需随包发布请从此处移除）
