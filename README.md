@@ -11,6 +11,7 @@
 
 <h1 align="center">🎬 Short-Drama Factory v4.4</h1>
 <p align="center"><b>抖音 / 红果 爆款短剧工业化编剧超级系统 · 纯剧本引擎</b></p>
+<p align="center"><sub>基于 <a href="https://github.com/lixiaoxiao9888-create">lixiaoxiao9888-create（漫剧老李）</a> 原创项目二次开发 · 由 <a href="https://github.com/wsf73">wsf73</a> 维护</sub></p>
 
 > **一句创意进，一部带付费墙的爆款剧本出。**
 > 情绪契约贯穿全剧，矛盾按单元跑——单矛盾绝不烧过 30 集；篇幅可选标准 / 长档（150~195 秒弹性）/ 漫剧；台词 / 内心独白 / 旁白三通道分流。
@@ -108,4 +109,24 @@ short-drama-factory/
 └── examples/                   # ep01-longwang-demo.md · long-format-3min-demo.md
 ```
 
-<p align="center"><sub>MIT License · 纯剧本层 · 情绪流 / 剧情流自动分流 · 面向红果付费生态</sub></p>
+---
+
+## 来源与致谢
+
+本仓库是 **[lixiaoxiao9888-create（漫剧老李）](https://github.com/lixiaoxiao9888-create)** 原创 `short-drama-factory` 项目的**二次开发版本**，由 **[wsf73](https://github.com/wsf73)** 维护。原始架构与规则库出自原作者，衍生部分在此基础上迭代。
+
+| | |
+|---|---|
+| 原始作者 | [lixiaoxiao9888-create（漫剧老李）](https://github.com/lixiaoxiao9888-create) |
+| 本仓库（衍生） | [wsf73/short-drama-factory](https://github.com/wsf73/short-drama-factory) |
+| 授权 | MIT —— 原始部分与衍生部分同协议，见 [`LICENSE`](LICENSE) |
+
+**二次开发累计增量（v4.3 → v4.4）**
+
+- **参考图配额 E24** —— 单集「场景数 + 人物数」≤ 5，对接 AI 视频生成「每张参考图 = 一景或一人」的硬上限；`--ref-images N` 可调、`0` 关闭。规格见 `references/reference-image-quota.md`。
+- **模型选型规格** —— 写剧本的第一标准是**指令遵循与长程一致性，不是文笔**；内置模型清单、推荐表与 A/B 定案法见 `references/model-selection.md`。
+- 同批修正 **E23 漏检**（行动型缺 `【质疑者配角】` 字段原不报错，现判 FAIL）。
+
+---
+
+<p align="center"><sub>MIT License · 基于 lixiaoxiao9888-create（漫剧老李）原创项目二次开发 · 纯剧本层 · 情绪流 / 剧情流自动分流 · 面向红果付费生态</sub></p>
