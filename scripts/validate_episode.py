@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""short-drama-factory v4.4 单集剧本机检（分档）
+"""short-drama-factory v4.5 单集剧本机检（分档）
 
 用法:
     python validate_episode.py <单集剧本.md> [--format auto|standard|long|manju] [--prev 前集.md ...] [--ref-images N]
     python validate_episode.py --self-test
     （Windows 用 python；macOS / Linux 用 python3）
 
-    --ref-images N  参考图配额上限（默认 5；0 = 关闭本项检查）。
-                    AI 视频生成时"每张参考图 = 一个场景或一个人物"，故单集「场景数 + 人物数」不得超 N，
-                    否则下游一次出图放不下（规格 references/reference-image-quota.md）。
+    --ref-images N  单集配额上限（默认 4；0 = 关闭本项检查）。
+                    单集「场景数 + 人物数」为全系统第一硬性规则，优先于时长/体量：
+                    AI 视频生成时"每张参考图 = 一个场景或一个人物"，超 N 则下游一次出图放不下
+                    （规格 references/reference-image-quota.md）。配额与时长冲突时，保配额、调整时长——
+                    标注「【配额裁定】：配额优先，本集时长调整为 X 秒」即按实际时长 / standard 档交付，
+                    E17 长档下限让位（不得为凑时长突破配额）。
 
 档位 profile (--format; 默认 auto = 按正文自检: 含"长档"→long, 含"漫剧"→manju, 否则 standard):
     standard  标准档 90~120 秒   正文体量 实拍 680~900 / 漫剧 480~700   场景 <=2   对白行 >=4
@@ -51,9 +54,10 @@
           >70%→缺少肢体冲突与视听调度；<25%→缺乏唇枪舌战；独白/旁白不计入两端
     E22 台词用语/错别字(常用误用对照，如 竞然/迫不急待/掉过钱…)          WARN(只提示，不拦)
     E23 冲突形态适配: ②行动坚持型必须设【质疑者配角】(准备×质疑的对手位)  FAIL(缺或为空)
-    E24 参考图配额: 场景数 + 人物数 <= N(默认 5, --ref-images 调整, 0=关闭)  FAIL(超限)
-          AI 视频生成时"每张参考图 = 一个场景或一个人物"，单集超限则下游无法一次出图；
-          超限修法：合并工具位/公职功能位/无台词角色，或降为画外音/转述
+    E24 单集配额【第一硬性规则·v4.5】: 场景数 + 人物数 <= N(默认 4, --ref-images 调整, 0=关闭)  FAIL(超限)
+          全系统优先级最高，优先于时长(E16/E17)与体量(E1)：AI 视频生成"每张参考图 = 一个场景或一个人物"，
+          单集超限则下游无法一次出图。超限修法：合并工具位/公职功能位/无台词角色、降为画外/群像、合并场景；
+          若压缩后撑不满原定时长，保配额、调整时长（【配额裁定】：配额优先，按实际时长/standard 档交付或拆集）
           （规格 references/reference-image-quota.md）
     E18 对白语气供给(v3.4.3·对接导演端 V6.9.3 C16 / model-adapters §5.2):
         E18a 神态短语含空泛情绪结果词(开心/愤怒等)                       WARN
@@ -86,11 +90,13 @@ DLG_PER_SEC = 4.5                    # 台词→时长换算参考语速(字/s)�
 DLG_TARGET = {90: 400, 120: 540, 150: 670, 180: 800, 195: 870}   # 各目标时长的纯台词量【参考中值】(字)，非硬门槛
 WIN15_MAX_CHARS = 95                 # E19: 任何连续对白块净字数上限(字)，≈15秒×6.33字/s触顶
 
-# ---- 参考图配额（v4.4 · AI 视频生成侧约束）----
+# ---- 单集配额（v4.5 第一硬性规则 · 由 v4.4 参考图配额升格）----
 # 下游 AI 视频生成"每张参考图 = 一个场景或一个人物"，单集可投喂参考图数量有硬上限；
 # 剧本端须保证「场景数 + 人物数」≤ 该上限，否则一次出图放不下。
-# 默认 5；可用 --ref-images N 调整，--ref-images 0 关闭本项检查。
-REF_IMAGE_LIMIT = 5
+# v4.5 起：默认 4，且为全系统第一硬性规则——优先于时长(E16/E17)与体量(E1)；
+# 配额与时长冲突时一律保配额、调整时长（见 quota_ruling() / 【配额裁定】字段）。
+# 可用 --ref-images N 调整，--ref-images 0 关闭本项检查。
+REF_IMAGE_LIMIT = 4
 
 # ---- 对白语气供给（v3.4.3 · 对接导演端 V6.9.3 C16 / model-adapters §5.2 对白三要素）----
 # 官方对白三要素 = WHO SPEAKS + WHAT THEY SAY + HOW THEY SOUND；
@@ -250,15 +256,30 @@ def is_long(text):
     return "长档" in _header_text(text)
 
 
+def quota_ruling(text):
+    """v4.5 第一硬性规则配套：正文是否标注「【配额裁定】：配额优先…」。
+    含义：单集「场景数 + 人物数 ≤ 4」与既定档位/时长冲突时，明确裁定保配额、调整单集时长
+    （按实际体量以 standard 档交付，或将本集拆成两集）——E17 长档 150 秒下限对此类集让位。
+    无字段时一切照旧（长档仍受 E16/E17 双面夹住）。"""
+    m = re.search(r"【配额裁定】[：:]\s*([^\n】]{1,80})", text)
+    return bool(m and "配额优先" in m.group(1))
+
+
 def resolve_profile(text, profile="auto"):
-    """auto 档按正文自检: 含"长档"→long, 含"漫剧"→manju, 否则 standard"""
+    """auto 档按正文自检: 含"长档"→long, 含"漫剧"→manju, 否则 standard。
+    v4.5：第一硬性规则裁定优先——长档集若标注【配额裁定】配额优先（≤4 配额撑不满 150 秒），
+    按 standard 档校验交付，E11/E16/E17 不再以长档口径拦截。"""
     if profile != "auto":
-        return profile if profile in PROFILES else "standard"
-    if is_long(text):
-        return "long"
-    if is_anime(text):
-        return "manju"
-    return "standard"
+        resolved = profile if profile in PROFILES else "standard"
+    elif is_long(text):
+        resolved = "long"
+    elif is_anime(text):
+        resolved = "manju"
+    else:
+        resolved = "standard"
+    if resolved == "long" and quota_ruling(text):
+        return "standard"
+    return resolved
 
 
 def net_band(text, profile):
@@ -362,12 +383,14 @@ def validate(text, prev_texts=(), profile="auto", ref_limit=None):
     if sc == 0:
         warns.append("E3 未检出 [场景] 标记，无法核对场景数")
 
-    # E24 参考图配额：场景数 + 人物数 <= N（AI 视频生成"每张参考图 = 一景或一人"）
+    # E24 单集配额【第一硬性规则】：场景数 + 人物数 <= N（v4.5 默认 4，优先于时长/体量）
     _rl = REF_IMAGE_LIMIT if ref_limit is None else ref_limit
     ppl = roster_count(text)
     if _rl and sc + ppl > _rl:
-        fails.append(f"E24 参考图配额超限：场景 {sc} + 人物 {ppl} = {sc + ppl} > {_rl}"
-                     f"（AI 视频参考图上限；应合并工具位/公职功能位/无台词角色，或降为画外音/转述）")
+        fails.append(f"E24 第一硬性规则·配额超限：场景 {sc} + 人物 {ppl} = {sc + ppl} > {_rl}"
+                     "（单集配额为全系统第一规则，优先于时长/体量：应合并工具位/公职功能位/无台词角色、"
+                     "降为群像画外、台词承接或合并场景；压缩后撑不满原时长的，保配额、调整时长——"
+                     "标注【配额裁定】：配额优先，本集时长调整为 X 秒，按实际时长交付或拆集）")
 
     head = "".join(first_content_lines(text))
     banned_hit = any(w in head for w in OPEN_BAN_WORDS)
@@ -513,9 +536,11 @@ def validate(text, prev_texts=(), profile="auto", ref_limit=None):
         if claimed < LONG_MIN_SEC:
             fails.append(
                 f"E17 长档降级：标注 {claimed}s 低于长档下限 {LONG_MIN_SEC}s——挂着长档名头、交的是标准档体量"
-                f"（纯台词仅 {dlg_chars} 字，可拆 {est:.0f}s）。两条出路：① 补足纯台词量做成真长档"
+                f"（纯台词仅 {dlg_chars} 字，可拆 {est:.0f}s）。三条出路：① 补足纯台词量做成真长档"
                 "（150s≈670字 / 180s≈800字 / 195s≈870字 纯台词【参考中值】）；"
-                "② 明确改 --format standard（90~120 秒）。"
+                "② 明确改 --format standard（90~120 秒）；"
+                "③ 若受 E24 第一硬性规则所限（场景+人物≤4、撑不满 150 秒），标注"
+                "「【配额裁定】：配额优先，本集时长调整为 X 秒」即按实际时长交付（保配额、调时长）。"
                 "禁止用动作行凑体量后标短时长来规避 E16")
 
     for prev in prev_texts:
@@ -1050,26 +1075,52 @@ def self_test():
     if not any(x.startswith("E21 ") and "<25%" in x for x in w):
         print("FAIL self-test: 对白占比<25%应报 E21 WARN:", w); ok = 0
 
-    # ---- E24 参考图配额（场景数 + 人物数 ≤ N，默认 5）回归 ----
-    # 2 场 + 4 人 = 6 > 5 → FAIL
+    # ---- E24 单集配额【第一硬性规则】（场景数 + 人物数 ≤ N，默认 4）回归 ----
+    # 2 场 + 4 人 = 6 > 4 → FAIL
     e24 = ("第【1】集\n[场景]：内景·客厅·日\n[场景]：内景·厨房·日\n"
            "[人物]：甲、乙、丙、丁\n△ 拍桌。\n甲：说。\n乙：说。\n丙：说。\n丁：说。\n"
            "【本集断章卡点】：满堂死寂。（黑屏：下滑解锁）\n")
     f, _, _ = validate(e24)
     if not any("E24" in x for x in f):
-        print("FAIL self-test: 场景+人物>5 应报 E24"); ok = 0
-    # 边界：2 场 + 3 人 = 5 → 不应报 E24
+        print("FAIL self-test: 场景+人物>4 应报 E24"); ok = 0
+    # 2 场 + 3 人 = 5 > 4 → 同样 FAIL（v4.5 旧边界 5 已收紧）
     f, _, _ = validate(e24.replace("[人物]：甲、乙、丙、丁", "[人物]：甲、乙、丙"))
+    if not any("E24" in x for x in f):
+        print("FAIL self-test: 场景+人物=5 应报 E24（默认已收紧为 4）"); ok = 0
+    # 边界：2 场 + 2 人 = 4 → 不应报 E24
+    f, _, _ = validate(e24.replace("[人物]：甲、乙、丙、丁", "[人物]：甲、乙"))
     if any("E24" in x for x in f):
-        print("FAIL self-test: 场景+人物=5 不应报 E24:", [x for x in f if "E24" in x]); ok = 0
+        print("FAIL self-test: 场景+人物=4 不应报 E24:", [x for x in f if "E24" in x]); ok = 0
+    # 边界：1 场 + 3 人 = 4 → 不应报 E24（长档常见构型）
+    f, _, _ = validate(e24.replace("[场景]：内景·厨房·日\n", "")
+                       .replace("[人物]：甲、乙、丙、丁", "[人物]：甲、乙、丙"))
+    if any("E24" in x for x in f):
+        print("FAIL self-test: 1场+3人=4 不应报 E24:", [x for x in f if "E24" in x]); ok = 0
     # --ref-images 0 关闭本项检查
     f, _, _ = validate(e24, ref_limit=0)
     if any("E24" in x for x in f):
         print("FAIL self-test: --ref-images 0 应关闭 E24"); ok = 0
-    # 括号备注剔除后再计人物数：3 人（各带备注）→ 不超
-    f, _, _ = validate(e24.replace("[人物]：甲、乙、丙、丁", "[人物]：甲（隐忍）、乙（嚣张）、丙（冷漠）"))
+    # 括号备注剔除后再计人物数：1 场 + 3 人（各带备注）= 4 → 不超
+    _e24b = e24.replace("[场景]：内景·厨房·日\n", "").replace(
+        "[人物]：甲、乙、丙、丁", "[人物]：甲（隐忍）、乙（嚣张）、丙（冷漠）")
+    f, _, _ = validate(_e24b)
     if any("E24" in x for x in f):
-        print("FAIL self-test: 括号备注应剔除后再计人物数"); ok = 0
+        print("FAIL self-test: 括号备注应剔除后再计人物数:", [x for x in f if "E24" in x]); ok = 0
+
+    # ---- 配额裁定（v4.5 第一规则配套）：长档集标注【配额裁定】配额优先 → 按 standard 交付，E11/E17 让位 ----
+    ruled = ("第【1】集（长档·约3分钟）\n【配额裁定】：配额优先，本集压缩为 1 场 3 人，时长调整为 120 秒\n"
+             "[场景]：内景·堂·日\n[人物]：甲、乙、丙\n△ 拍桌。\n甲：说。\n乙：说。\n丙：说。\n"
+             "【本集时长】：120 秒\n【本集断章卡点】：满堂死寂。（黑屏：下滑解锁）\n")
+    if resolve_profile(ruled) != "standard":
+        print("FAIL self-test: 【配额裁定】长档应降级按 standard 识别"); ok = 0
+    f, _, _ = validate(ruled)
+    if any(("E17" in x) or ("E11" in x) for x in f):
+        print("FAIL self-test: 配额裁定后 E17/E11 应让位:", f); ok = 0
+    # 无裁定字段的长档标 120 秒 → E17 仍须 FAIL（裁定必须显式，不得默认发生）
+    f, _, _ = validate(ruled.replace(
+        "【配额裁定】：配额优先，本集压缩为 1 场 3 人，时长调整为 120 秒\n", ""))
+    if not any("E17" in x for x in f):
+        print("FAIL self-test: 无裁定字段的长档 120 秒仍应报 E17"); ok = 0
 
     print("[+] self-test PASSED" if ok else "[-] self-test FAILED")
     return 0 if ok else 1
@@ -1143,14 +1194,17 @@ def main():
         except (UnicodeDecodeError, OSError):
             print(f"[-] 无法读取前集文件: {p}"); return 2
     prev_texts = [open(p, encoding="utf-8").read() for p in prevs]
+    profile_in = profile
     profile = resolve_profile(text, profile)
     fails, warns, nc = validate(text, prev_texts, profile, ref_limit)
     notes = collect_notes(text, profile)
     print(f"== {path}  [{profile} {PROFILES[profile]['label']}]  正文体量≈{nc} ==")
+    if profile_in != profile and profile == "standard" and quota_ruling(text):
+        print("   【配额裁定】第一硬性规则生效：保配额（场景+人物≤4），本集时长/档位已调整，按 standard 交付")
     _rl = REF_IMAGE_LIMIT if ref_limit is None else ref_limit
     if _rl:
         _sc, _ppl = scene_count(text), roster_count(text)
-        print(f"   参考图配额：场景 {_sc} + 人物 {_ppl} = {_sc + _ppl} / {_rl}")
+        print(f"   单集配额：场景 {_sc} + 人物 {_ppl} = {_sc + _ppl} / {_rl}（第一硬性规则，优先于时长）")
     for x in fails:
         print("[-] FAIL:", x)
     for x in warns:

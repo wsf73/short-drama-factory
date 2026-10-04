@@ -1,7 +1,7 @@
-<img src="assets/banner-v4.4.svg" alt="Short-Drama Factory v4.4 · 抖音/红果爆款短剧工业化编剧超级系统" width="100%">
+<img src="assets/banner-v4.5.svg" alt="Short-Drama Factory v4.5 · 抖音/红果爆款短剧工业化编剧超级系统" width="100%">
 
 <p align="center">
-<a href="#篇幅三档"><img src="https://img.shields.io/badge/version-v4.4-gold?style=for-the-badge" alt="version"></a>
+<a href="#篇幅三档"><img src="https://img.shields.io/badge/version-v4.5-gold?style=for-the-badge" alt="version"></a>
 <a href="#篇幅三档"><img src="https://img.shields.io/badge/%E7%AF%87%E5%B9%85-%E6%A0%87%E5%87%86%20%2F%20%E9%95%BF%E6%A1%A33%E5%88%86%E9%92%9F%20%2F%20%E6%BC%AB%E5%89%A7-ff69b4?style=for-the-badge" alt="lengths"></a>
 <a href="#核心方法论"><img src="https://img.shields.io/badge/%E5%BC%95%E6%93%8E-%E6%83%85%E7%BB%AA%E5%A5%91%E7%BA%A6%E5%8D%95%E5%85%83%E9%93%BE-8a2be2?style=for-the-badge" alt="engine"></a>
 <a href="#能力"><img src="https://img.shields.io/badge/%E8%83%BD%E5%8A%9B-11%E9%A1%B9-6f42c1?style=for-the-badge" alt="capabilities"></a>
@@ -9,7 +9,7 @@
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="license"></a>
 </p>
 
-<h1 align="center">🎬 Short-Drama Factory v4.4</h1>
+<h1 align="center">🎬 Short-Drama Factory v4.5</h1>
 <p align="center"><b>抖音 / 红果 爆款短剧工业化编剧超级系统 · 纯剧本引擎</b></p>
 <p align="center"><sub>基于 <a href="https://github.com/lixiaoxiao9888-create">lixiaoxiao9888-create（漫剧老李）</a> 原创项目二次开发 · 由 <a href="https://github.com/wsf73">wsf73</a> 维护</sub></p>
 
@@ -66,8 +66,8 @@
 
 | 能力 | 一句话 | 文档 |
 |---|---|---|
-| **红线机器化** | 单集分档机检 **E1~E24**（体量/断章/时长守恒/15秒窗口/动作单段/对白黄金比/参考图配额/合规红线…）+ 全剧台账机检 **S1~S8**，均含 self-test | `scripts/` |
-| **参考图配额（E24）** | 单集「场景数 + 人物数 ≤ 5」——对接 AI 视频生成"每张参考图 = 一景或一人"的硬上限；超限四级修法（合并工具位 / 降为动作画外 / 台词承接 / 合并场景） | `reference-image-quota.md` |
+| **红线机器化** | 单集分档机检 **E1~E24**（**单集配额第一规则**/体量/断章/时长守恒/15秒窗口/动作单段/对白黄金比/合规红线…）+ 全剧台账机检 **S1~S8**，均含 self-test | `scripts/` |
+| **单集配额（E24·第一硬性规则）** | 单集「场景数 + 人物数 **≤ 4**」，全系统优先级最高、优先于时长——对接 AI 视频生成"每张参考图 = 一景或一人"；冲突时保配额、调整时长/拆集（配额裁定降档）；超限四级修法（合并工具位 / 降为群像动作画外 / 台词承接 / 合并场景） | `reference-image-quota.md` |
 | **评审问题卡 + 保护性反例** | 评审官/修复器双角色，P0/P1/P2 定级、不设总分不预测爆款；NOTE 级反例防误伤安静场与直说 | `script-doctor-protocol.md` · `protective-counterexamples.md` |
 
 > ⚡ **动态按需挂载矩阵**：8 个交互模式 × 仅挂载核心文件，防 Context 爆炸（懒加载）。
@@ -89,8 +89,9 @@ python scripts/validate_episode.py --self-test
 python scripts/validate_episode.py examples/long-format-3min-demo.md --format long
 python scripts/validate_series.py --self-test
 
-# 参考图配额（E24）：接 AI 视频生成时，单集「场景数 + 人物数」须 ≤ 5（每张参考图 = 一景或一人）
-python scripts/validate_episode.py <单集.md> --ref-images 5   # 上限可调；0 = 关闭本项检查
+# 单集配额（E24·第一硬性规则）：单集「场景数 + 人物数」须 ≤ 4（每张参考图 = 一景或一人）；
+# 与时长冲突时保配额、调整时长/拆集（【配额裁定】：配额优先，本集时长调整为 X 秒）
+python scripts/validate_episode.py <单集.md> --ref-images 4   # 上限显式可调；0 = 关闭本项检查
 ```
 
 > **选哪个模型写？** 写剧本的第一标准是**指令遵循与长程一致性，不是文笔**——格式跑偏直接机检 FAIL，
@@ -121,9 +122,9 @@ short-drama-factory/
 | 本仓库（衍生） | [wsf73/short-drama-factory](https://github.com/wsf73/short-drama-factory) |
 | 授权 | MIT —— 原始部分与衍生部分同协议，见 [`LICENSE`](LICENSE) |
 
-**二次开发累计增量（v4.3 → v4.4）**
+**二次开发累计增量（v4.3 → v4.5）**
 
-- **参考图配额 E24** —— 单集「场景数 + 人物数」≤ 5，对接 AI 视频生成「每张参考图 = 一景或一人」的硬上限；`--ref-images N` 可调、`0` 关闭。规格见 `references/reference-image-quota.md`。
+- **单集配额 E24（v4.5 第一硬性规则）** —— 单集「场景数 + 人物数」**≤ 4**，全系统优先级最高、优先于时长，对接 AI 视频生成「每张参考图 = 一景或一人」的硬上限；与时长冲突时**保配额、调整时长/拆集**（【配额裁定】：配额优先，本集时长调整为 X 秒，降档交付，E16/E17 让位）；长档构型收敛为 1场3人 / 2场2人；`--ref-images N` 可调、`0` 关闭。规格见 `references/reference-image-quota.md`。
 - **模型选型规格** —— 写剧本的第一标准是**指令遵循与长程一致性，不是文笔**；内置模型清单、推荐表与 A/B 定案法见 `references/model-selection.md`。
 - 同批修正 **E23 漏检**（行动型缺 `【质疑者配角】` 字段原不报错，现判 FAIL）。
 
